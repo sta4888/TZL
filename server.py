@@ -1,265 +1,107 @@
 import socket
 import threading
-import json
-import sqlite3
-import os
-import random
-import traceback
+import logging
 
-CONFIG_FILE = "server_config.json"
-ITEMS_FILE = "items.json"
-
-
-def load_config():
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-def load_items():
-    with open(ITEMS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+from srv_cli_handler import ClientHandler
+from srv_config import load_config, DEFAULT_ITEMS_FILE
+from srv_db import DB
+from srv_game import GameService
+from srv_items_repository import ItemRepository
 
 
-class DB:
-    def __init__(self, db_file):
-        self.db_file = db_file
-        self._ensure_schema()
-
-    def _conn(self):
-        return sqlite3.connect(self.db_file, check_same_thread=False)
-
-    def _ensure_schema(self):
-        conn = self._conn()
-        cur = conn.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS accounts (
-                nickname TEXT PRIMARY KEY,
-                credits INTEGER NOT NULL
-            );
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS account_items (
-                nickname TEXT,
-                item_id INTEGER,
-                PRIMARY KEY (nickname, item_id),
-                FOREIGN KEY (nickname) REFERENCES accounts(nickname)
-            );
-        """)
-        conn.commit()
-        conn.close()
-
-    def get_account(self, nickname):
-        conn = self._conn()
-        cur = conn.cursor()
-        cur.execute("SELECT credits FROM accounts WHERE nickname = ?", (nickname,))
-        row = cur.fetchone()
-        if not row:
-            conn.close()
-            return None
-        credits = row[0]
-        cur.execute("SELECT item_id FROM account_items WHERE nickname = ?", (nickname,))
-        items = [r[0] for r in cur.fetchall()]
-        conn.close()
-        return {"nickname": nickname, "credits": credits, "items": items}
-
-    def create_account(self, nickname, credits):
-        conn = self._conn()
-        cur = conn.cursor()
-        cur.execute("INSERT OR REPLACE INTO accounts (nickname, credits) VALUES (?, ?)", (nickname, credits))
-        conn.commit()
-        conn.close()
-
-    def add_credits(self, nickname, amount):
-        conn = self._conn()
-        cur = conn.cursor()
-        cur.execute("UPDATE accounts SET credits = credits + ? WHERE nickname = ?", (amount, nickname))
-        conn.commit()
-        conn.close()
-
-    def set_credits(self, nickname, credits):
-        conn = self._conn()
-        cur = conn.cursor()
-        cur.execute("UPDATE accounts SET credits = ? WHERE nickname = ?", (credits, nickname))
-        conn.commit()
-        conn.close()
-
-    def add_item(self, nickname, item_id):
-        conn = self._conn()
-        cur = conn.cursor()
-        cur.execute("INSERT OR IGNORE INTO account_items (nickname, item_id) VALUES (?, ?)", (nickname, item_id))
-        conn.commit()
-        conn.close()
-
-    def remove_item(self, nickname, item_id):
-        conn = self._conn()
-        cur = conn.cursor()
-        cur.execute("DELETE FROM account_items WHERE nickname = ? AND item_id = ?", (nickname, item_id))
-        conn.commit()
-        conn.close()
-
-
-def send_json(conn, obj):
-    data = json.dumps(obj, ensure_ascii=False) + "\n"
-    conn.sendall(data.encode("utf-8"))
-
-def recv_json_line(conn):
-    data = b""
-    while True:
-        chunk = conn.recv(4096)
-        if not chunk:
-            if data:
-                break
-            return None
-        data += chunk
-        if b"\n" in chunk:
-            break
-    line, _, rest = data.partition(b"\n")
-    try:
-        return json.loads(line.decode("utf-8"))
-    except Exception:
-        return None
-
-class ClientHandler(threading.Thread):
-    def __init__(self, conn, addr, db, items, cfg):
-        super().__init__(daemon=True)
-        self.conn = conn
-        self.addr = addr
-        self.db = db
-        self.items = items
-        self.cfg = cfg
-        self.nickname = None
-
-    def run(self):
+def admin_console_loop(items_repo: ItemRepository, shutdown_event: threading.Event):
+    """
+    Поддерживает простые команды:
+      add <name> <price>   - добавить предмет
+      remove <id>          - удалить предмет
+      list                 - вывести список предметов
+      save                 - сохранить в файл
+      reload               - перечитать items из файла (перезапишет текущий список)
+      exit/shutdown        - завершить сервер
+    """
+    print("Admin console ready. Команды: add/remove/list/save/reload/shutdown")
+    while not shutdown_event.is_set():
         try:
-            while True:
-                msg = recv_json_line(self.conn)
-                if msg is None:
-                    break
-                action = msg.get("action")
-                if action == "login":
-                    self.handle_login(msg)
-                elif action == "logout":
-                    self.handle_logout(msg)
-                    break
-                elif action == "buy":
-                    self.handle_buy(msg)
-                elif action == "sell":
-                    self.handle_sell(msg)
-                elif action == "whoami":
-                    self.handle_whoami(msg)
-                else:
-                    send_json(self.conn, {"status": "error", "error": "unknown_action"})
+            line = input("admin> ").strip()
+        except EOFError:
+            break
+        if not line:
+            continue
+        parts = line.split()
+        cmd = parts[0].lower()
+        try:
+            if cmd == "add" and len(parts) >= 3:
+                name = " ".join(parts[1:-1])
+                price = int(parts[-1])
+                new = items_repo.add(name, price)
+                items_repo.save()
+                print("Added:", new)
+            elif cmd == "remove" and len(parts) == 2:
+                iid = int(parts[1])
+                ok = items_repo.remove(iid)
+                items_repo.save()
+                print("Removed:" if ok else "Not found")
+            elif cmd == "list":
+                for it in items_repo.list_all():
+                    print(f"{it['id']}: {it['name']} (price={it['price']})")
+            elif cmd == "save":
+                items_repo.save()
+                print("Saved to", items_repo.path)
+            elif cmd == "reload":
+                items_repo.load()
+                print("Reloaded from", items_repo.path)
+            elif cmd in ("exit", "shutdown", "quit"):
+                print("Shutting down server (admin)...")
+                shutdown_event.set()
+                break
+            else:
+                print("Unknown admin command")
         except Exception as e:
-            print("Exception handling client:", e)
-            traceback.print_exc()
-        finally:
-            try:
-                self.conn.close()
-            except:
-                pass
-            print("Connection closed", self.addr)
+            print("Admin command error:", e)
 
-    def handle_login(self, msg):
-        nickname = msg.get("nickname")
-        if not nickname:
-            send_json(self.conn, {"status": "error", "error": "no_nickname"})
-            return
-        acc = self.db.get_account(nickname)
-        if acc is None:
-            credits = 0
-            self.db.create_account(nickname, credits)
-            acc = self.db.get_account(nickname)
-        bonus = random.randint(self.cfg["login_credit_min"], self.cfg["login_credit_max"])
-        self.db.add_credits(nickname, bonus)
-        acc = self.db.get_account(nickname)
-        self.nickname = nickname
-        send_json(self.conn, {
-            "status": "ok",
-            "action": "login_result",
-            "account": acc,
-            "items_master": self.items,
-            "login_bonus": bonus
-        })
-        print("User logged in:", nickname, "bonus", bonus)
-
-    def handle_logout(self, msg):
-        send_json(self.conn, {"status": "ok", "action": "logout"})
-        self.nickname = None
-
-    def handle_whoami(self, msg):
-        if not self.nickname:
-            send_json(self.conn, {"status": "error", "error": "not_logged_in"})
-            return
-        acc = self.db.get_account(self.nickname)
-        send_json(self.conn, {"status": "ok", "account": acc})
-
-    def handle_buy(self, msg):
-        if not self.nickname:
-            send_json(self.conn, {"status": "error", "error": "not_logged_in"})
-            return
-        item_id = msg.get("item_id")
-        if item_id is None:
-            send_json(self.conn, {"status": "error", "error": "no_item_id"})
-            return
-        item = next((it for it in self.items if it["id"] == item_id), None)
-        if not item:
-            send_json(self.conn, {"status": "error", "error": "item_not_found"})
-            return
-        acc = self.db.get_account(self.nickname)
-        if item_id in acc["items"]:
-            send_json(self.conn, {"status": "error", "error": "already_owned"})
-            return
-        price = item["price"]
-        if acc["credits"] < price:
-            send_json(self.conn, {"status": "error", "error": "not_enough_credits"})
-            return
-        self.db.add_item(self.nickname, item_id)
-        self.db.add_credits(self.nickname, -price)
-        acc = self.db.get_account(self.nickname)
-        send_json(self.conn, {"status": "ok", "action": "buy_result", "account": acc, "bought": item})
-
-    def handle_sell(self, msg):
-        if not self.nickname:
-            send_json(self.conn, {"status": "error", "error": "not_logged_in"})
-            return
-        item_id = msg.get("item_id")
-        if item_id is None:
-            send_json(self.conn, {"status": "error", "error": "no_item_id"})
-            return
-        item = next((it for it in self.items if it["id"] == item_id), None)
-        if not item:
-            send_json(self.conn, {"status": "error", "error": "item_not_found"})
-            return
-        acc = self.db.get_account(self.nickname)
-        if item_id not in acc["items"]:
-            send_json(self.conn, {"status": "error", "error": "not_owned"})
-            return
-        sale_price = int(item["price"] * 0.5)
-        self.db.remove_item(self.nickname, item_id)
-        self.db.add_credits(self.nickname, sale_price)
-        acc = self.db.get_account(self.nickname)
-        send_json(self.conn, {"status": "ok", "action": "sell_result", "account": acc, "sold": item, "received": sale_price})
 
 def main():
     cfg = load_config()
-    items = load_items()
+    items_file = cfg.get("items_file", DEFAULT_ITEMS_FILE)
+    items_repo = ItemRepository(items_file)
     db = DB(cfg.get("db_file", "game.db"))
+    service = GameService(db, items_repo, cfg)
 
     host = cfg.get("host", "0.0.0.0")
-    port = cfg.get("port", 5000)
-    print("Starting server on", host, port)
+    port = int(cfg.get("port", 5000))
+
+    shutdown_event = threading.Event()
+
+    admin_thread = threading.Thread(target=admin_console_loop, args=(items_repo, shutdown_event), daemon=True)
+    admin_thread.start()
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((host, port))
-    s.listen(5)
+    s.listen(8)
+    logging.info("Server listening on %s:%s", host, port)
+
     try:
-        while True:
-            conn, addr = s.accept()
-            print("Connection from", addr)
-            handler = ClientHandler(conn, addr, db, items, cfg)
+        while not shutdown_event.is_set():
+            try:
+                s.settimeout(1.0)
+                conn, addr = s.accept()
+            except socket.timeout:
+                continue
+            except Exception:
+                raise
+            logging.info("Connection from %s", addr)
+            handler = ClientHandler(conn, addr, service)
             handler.start()
     except KeyboardInterrupt:
-        print("Server shutting down...")
+        logging.info("KeyboardInterrupt -> shutting down")
+    except Exception:
+        logging.exception("Server error")
     finally:
+        logging.info("Server shutting down...")
+        shutdown_event.set()
         s.close()
+
 
 if __name__ == "__main__":
     main()
