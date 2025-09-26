@@ -1,0 +1,7 @@
+[
+  {"id": 1, "name": "Scout Ship", "price": 100},
+  {"id": 2, "name": "Fighter Ship", "price": 500},
+  {"id": 3, "name": "Cargo Hold", "price": 250},
+  {"id": 4, "name": "Laser Cannon", "price": 350},
+  {"id": 5, "name": "Shield Generator", "price": 400}
+]

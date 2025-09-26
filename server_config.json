@@ -1,0 +1,7 @@
+{
+  "host": "0.0.0.0",
+  "port": 5000,
+  "login_credit_min": 50,
+  "login_credit_max": 200,
+  "db_file": "game.db"
+}
