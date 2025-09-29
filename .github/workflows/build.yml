@@ -1,10 +1,9 @@
-name: Build Client
+name: Build and Release Client
 
 on:
   push:
     tags:
-      - "v*.*.*"   # Запускать только при пуше тега, например v1.0.0
-  workflow_dispatch:  # Можно запускать руками из Actions
+      - "v*.*.*"   # например, v1.0.0 создаст релиз
 
 jobs:
   build:
@@ -27,17 +26,17 @@ jobs:
       - name: Build exe with Nuitka
         run: |
           python -m nuitka --onefile --standalone --assume-yes-for-downloads client.py
-      
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: client-exe
-          path: client.dist/client.exe
+          path: client.exe   # укажи путь, куда Nuitka положил exe
 
   release:
     needs: build
     runs-on: ubuntu-latest
+
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -45,7 +44,7 @@ jobs:
           name: client-exe
           path: .
 
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: client.exe
