@@ -47,7 +47,7 @@ jobs:
 
       - name: Build client exe
         run: |
-          python -m nuitka --onefile --standalone cli/client.py
+          python -m nuitka --onefile --standalone --assume-yes-for-downloads cli/client.py
 
       - name: Find built exe
         id: find_exe
