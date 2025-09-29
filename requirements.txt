@@ -1,3 +1,4 @@
 readchar
 python-dotenv
 pytest
+nuitka
