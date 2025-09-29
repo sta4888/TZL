@@ -26,6 +26,11 @@ jobs:
           pip install -r requirements.txt
           pip install nuitka
 
+      - name: Run tests
+        run: |
+          pytest --maxfail=1 --disable-warnings -q
+
+
       - name: Build exe with Nuitka
         run: |
           python -m nuitka --onefile --standalone --assume-yes-for-downloads client.py
