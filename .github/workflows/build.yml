@@ -22,7 +22,6 @@ jobs:
         with:
           python-version: "3.11"
 
-
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
@@ -36,7 +35,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: client-exe
-          path: client.exe   # укажи путь, куда Nuitka положил exe
+          path: ./*.exe   # найдёт собранный exe
 
   release:
     needs: build
@@ -49,9 +48,9 @@ jobs:
           name: client-exe
           path: .
 
-      - name: Create Release
+      - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: client.exe
+          files: ./*.exe   # загружаем exe в релиз
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
