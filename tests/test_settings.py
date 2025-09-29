@@ -1,9 +1,12 @@
 import os
 import sys, os
+
+from cli import cli_setting
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 
-import cli_setting
+
 
 
 def test_default_settings(monkeypatch):

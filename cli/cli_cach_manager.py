@@ -1,7 +1,7 @@
 import json
 import os
 
-from cli_setting import ITEMS_CACHE
+from cli.cli_setting import ITEMS_CACHE
 
 
 class CacheManager:

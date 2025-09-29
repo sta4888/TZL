@@ -3,7 +3,7 @@ import os
 import threading
 from typing import Optional
 
-from srv_config import DEFAULT_ITEMS_FILE
+from srv.srv_config import DEFAULT_ITEMS_FILE
 
 
 class ItemRepository:

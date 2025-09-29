@@ -1,7 +1,7 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from cli_cach_manager import CacheManager
+from cli.cli_cach_manager import CacheManager
 
 
 def test_save_and_load_items(tmp_path):

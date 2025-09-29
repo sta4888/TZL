@@ -7,10 +7,10 @@ import time
 
 import pytest
 
-import server
-from srv_items_repository import ItemRepository
-from srv_db import DB
-from srv_game import GameService
+from srv import server
+from srv.srv_items_repository import ItemRepository
+from srv.srv_db import DB
+from srv.srv_game import GameService
 
 
 @pytest.fixture

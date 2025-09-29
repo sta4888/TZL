@@ -1,4 +1,4 @@
-name: Build and Release Client
+name: Test, Build and Release
 
 on:
   push:
@@ -9,9 +9,28 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: windows-latest
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: pytest --maxfail=1 --disable-warnings -q
+
+  build:
+    needs: test
+    runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,14 +45,9 @@ jobs:
           pip install -r requirements.txt
           pip install nuitka
 
-      - name: Run tests
+      - name: Build client exe
         run: |
-          pytest --maxfail=1 --disable-warnings -q
-
-
-      - name: Build exe with Nuitka
-        run: |
-          python -m nuitka --onefile --standalone --assume-yes-for-downloads client.py
+          python -m nuitka --onefile --standalone client/main.py
 
       - name: Find built exe
         id: find_exe

@@ -1,7 +1,7 @@
 import random
 
-from srv_db import DB
-from srv_items_repository import ItemRepository
+from srv.srv_db import DB
+from srv.srv_items_repository import ItemRepository
 
 
 class GameService:

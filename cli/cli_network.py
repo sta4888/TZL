@@ -1,7 +1,7 @@
 import json
 import socket
 
-from cli_setting import SERVER_HOST, SERVER_PORT
+from cli.cli_setting import SERVER_HOST, SERVER_PORT
 
 
 class NetworkClient:

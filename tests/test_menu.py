@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import pytest
 from unittest.mock import patch, MagicMock
 
-from cli_menu import MainMenu
+from cli.cli_menu import MainMenu
 
 
 @pytest.fixture

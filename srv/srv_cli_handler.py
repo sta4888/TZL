@@ -3,7 +3,7 @@ import logging
 import socket
 import threading
 
-from srv_game import GameService
+from srv.srv_game import GameService
 
 
 def send_json(conn: socket.socket, obj: dict):

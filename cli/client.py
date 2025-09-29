@@ -1,4 +1,4 @@
-from cli_game import GameClient
+from cli.cli_game import GameClient
 
 if __name__ == "__main__":
     try:

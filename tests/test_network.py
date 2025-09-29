@@ -1,7 +1,11 @@
 import sys, os
+
+from cli import cli_network
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-import cli_network
+
+
 
 
 

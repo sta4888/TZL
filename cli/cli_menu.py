@@ -2,8 +2,8 @@ import os
 
 import readchar
 
-from cli_cach_manager import CacheManager
-from cli_network import NetworkClient
+from cli.cli_cach_manager import CacheManager
+from cli.cli_network import NetworkClient
 
 
 class Menu:

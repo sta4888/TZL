@@ -1,6 +1,6 @@
-from cli_cach_manager import CacheManager
-from cli_menu import MainMenu
-from cli_network import NetworkClient
+from cli.cli_cach_manager import CacheManager
+from cli.cli_menu import MainMenu
+from cli.cli_network import NetworkClient
 
 
 class GameClient:
