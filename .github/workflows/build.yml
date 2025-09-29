@@ -50,7 +50,7 @@ jobs:
 
       - name: Build client exe
         run: |
-          python -m nuitka --standalone --onefile --windows-disable-console --disable-dll-dependency-cache --assume-yes-for-downloads cli/client.py
+          python -m nuitka --standalone --onefile --disable-dll-dependency-cache --assume-yes-for-downloads cli/client.py
 
       - name: Find built exe
         id: find_exe
