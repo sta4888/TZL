@@ -32,11 +32,11 @@ jobs:
     needs: test
     runs-on: windows-latest
     steps:
-      - name: Prepare env file
-        run: copy .env.example .env
-
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Prepare env file
+        run: copy .env.example .env
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -64,3 +64,4 @@ jobs:
           files: ${{ steps.find_exe.outputs.exe_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
