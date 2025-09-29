@@ -2,12 +2,11 @@ name: Build and Release Client
 
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*.*.*"
-  pull_request:
 
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -31,26 +30,15 @@ jobs:
         run: |
           python -m nuitka --onefile --standalone --assume-yes-for-downloads client.py
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: client-exe
-          path: ./*.exe   # найдёт собранный exe
+      - name: Find built exe
+        id: find_exe
+        run: |
+          $exe = Get-ChildItem -Path . -Filter "*.exe" | Select-Object -First 1
+          echo "exe_path=$($exe.FullName)" >> $env:GITHUB_OUTPUT
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: client-exe
-          path: .
-
-      - name: Upload to GitHub Release
+      - name: Upload Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
-          files: ./*.exe   # загружаем exe в релиз
+          files: ${{ steps.find_exe.outputs.exe_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

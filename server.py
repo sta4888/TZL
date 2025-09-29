@@ -2,11 +2,11 @@ import socket
 import threading
 import logging
 
-from srv_cli_handler import ClientHandler
-from srv_config import load_config, DEFAULT_ITEMS_FILE
-from srv_db import DB
-from srv_game import GameService
-from srv_items_repository import ItemRepository
+from srv.srv_cli_handler import ClientHandler
+from srv.srv_config import load_config, DEFAULT_ITEMS_FILE
+from srv.srv_db import DB
+from srv.srv_game import GameService
+from srv.srv_items_repository import ItemRepository
 
 
 def admin_console_loop(items_repo: ItemRepository, shutdown_event: threading.Event):
