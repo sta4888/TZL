@@ -17,7 +17,6 @@ class GameClient:
             print("Ошибка подключения:", e)
             return
 
-        master_items = self.cache.load_items()
         nickname = None
         account = None
 

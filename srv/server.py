@@ -67,7 +67,7 @@ def main():
     db = DB(cfg.get("db_file", "game.db"))
     service = GameService(db, items_repo, cfg)
 
-    host = cfg.get("host", "0.0.0.0")
+    host = cfg.get("host", "127.0.0.1")
     port = int(cfg.get("port", 5000))
 
     shutdown_event = threading.Event()

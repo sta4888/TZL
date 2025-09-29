@@ -32,6 +32,9 @@ jobs:
     needs: test
     runs-on: windows-latest
     steps:
+      - name: Prepare env file
+        run: copy .env.example .env
+
       - name: Checkout code
         uses: actions/checkout@v4
 
